@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Flexible Side Tabs",
+  "version": "1.0",
+  "description": "Organize description, comments, and related videos into side tabs on YouTube.",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+}
