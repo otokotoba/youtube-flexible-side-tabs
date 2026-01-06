@@ -4,7 +4,9 @@ const SELECTORS = (() => {
   const primary = "ytd-watch-flexy #columns #primary",
     secondary = "ytd-watch-flexy #columns #secondary",
     description = `${primary} #description-inner`,
-    expandDescriptionButton = `${description} #expand`,
+    descriptionExpander = `${description} #description-inline-expander`,
+    descriptionExpanded = `${description} #expanded`,
+    descriptionExpandButton = `${description} #expand`,
     comments = `${primary} #comments`,
     related = `${secondary} #related`;
 
@@ -12,7 +14,9 @@ const SELECTORS = (() => {
     primary,
     secondary,
     description,
-    expandDescriptionButton,
+    descriptionExpander,
+    descriptionExpanded,
+    descriptionExpandButton,
     comments,
     related,
   };
@@ -110,9 +114,33 @@ async function createTabUI() {
   await moveYouTubeElements();
 }
 
-async function moveYouTubeElements() {
-  const button = await findYouTubeElement(SELECTORS.expandDescriptionButton);
+async function expandDescription() {
+  const expander = await findYouTubeElement(SELECTORS.descriptionExpander);
+  const expanded = await findYouTubeElement(SELECTORS.descriptionExpanded);
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (
+        expander.hasAttribute("is-expanded") &&
+        mutation.target instanceof Element
+      ) {
+        mutation.target.removeAttribute("hidden");
+      }
+    });
+  });
+
+  observer.observe(expanded, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden"],
+  });
+
+  const button = await findYouTubeElement(SELECTORS.descriptionExpandButton);
   button.click();
+}
+
+async function moveYouTubeElements() {
+  await expandDescription();
 
   TABS.forEach(async (tab) => {
     const container = document.getElementById(tab.contentId);
