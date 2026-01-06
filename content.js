@@ -1,7 +1,8 @@
 "use strict";
 
 const SELECTORS = (() => {
-  const columns = "ytd-watch-flexy #columns",
+  const watchFlexy = "ytd-watch-flexy",
+    columns = `${watchFlexy} #columns`,
     primary = `${columns} #primary`,
     secondary = `${columns} #secondary`,
     description = `${primary} #description-inner`,
@@ -12,6 +13,7 @@ const SELECTORS = (() => {
     related = `${secondary} #related`;
 
   return {
+    watchFlexy,
     columns,
     primary,
     secondary,
@@ -36,23 +38,40 @@ const CLASSES = {
   resizing: "yt-fst-resizing",
 };
 
+const CONTENT_IDS = {
+  description: "yt-fst-tab-content-description",
+  comments: "yt-fst-tab-content-comments",
+  related: "yt-fst-tab-content-related",
+};
+
 const TABS = [
   {
     buttonText: "Description",
-    contentId: "yt-fst-tab-content-description",
+    contentId: CONTENT_IDS.description,
     selector: SELECTORS.description,
+    originalParent: null,
   },
   {
     buttonText: "Comments",
-    contentId: "yt-fst-tab-content-comments",
+    contentId: CONTENT_IDS.comments,
     selector: SELECTORS.comments,
+    originalParent: null,
   },
   {
     buttonText: "Related",
-    contentId: "yt-fst-tab-content-related",
+    contentId: CONTENT_IDS.related,
     selector: SELECTORS.related,
+    originalParent: null,
   },
 ];
+
+const ATTRIBUTES = {
+  isSingleColumn: "is-single-column",
+  theater: "theater",
+  fullscreen: "fullscreen",
+};
+
+const cleanups = [];
 
 class YouTubeElementNotFoundError extends Error {
   constructor(selector) {
@@ -80,6 +99,8 @@ function findYouTubeElement(selector) {
 
 async function createTabUI() {
   if (document.querySelector(`.${CLASSES.tabContainer}`)) return;
+
+  document.body.classList.add(CLASSES.enabled);
 
   await createResizeBar();
 
@@ -136,12 +157,12 @@ async function expandDescription() {
       }
     });
   });
-
   observer.observe(expanded, {
     subtree: true,
     attributes: true,
     attributeFilter: ["hidden"],
   });
+  cleanups.push(() => observer.disconnect());
 
   const button = await findYouTubeElement(SELECTORS.descriptionExpandButton);
   button.click();
@@ -150,13 +171,14 @@ async function expandDescription() {
 async function moveYouTubeElements() {
   await expandDescription();
 
-  TABS.forEach(async (tab) => {
+  for (const tab of TABS) {
     const container = document.getElementById(tab.contentId);
     const element = await findYouTubeElement(tab.selector);
-    if (element.parentElement !== container) {
+    if (container) {
+      tab.originalParent = element.parentElement;
       container.appendChild(element);
     }
-  });
+  }
 }
 
 function switchTab(contentId) {
@@ -241,19 +263,81 @@ async function createResizeBar() {
   });
 }
 
-async function changeLayout() {
-  const isWatchPage = window.location.pathname === "/watch";
-  const enabled = document.body.classList.contains(CLASSES.enabled);
-  console.log(`changeLayout: isWatchPage=${isWatchPage}, enabled=${enabled}`);
+async function restoreLayout() {
+  if (!document.body.classList.contains(CLASSES.enabled)) return;
 
-  if (isWatchPage && !enabled) {
-    document.body.classList.add(CLASSES.enabled);
-    await createTabUI();
+  document.body.classList.remove(CLASSES.enabled);
+
+  const container = document.querySelector(`.${CLASSES.tabContainer}`);
+  if (container) {
+    for (const tab of TABS) {
+      if (tab.originalParent) {
+        const elements = document.querySelectorAll(`#${tab.contentId} > *`);
+        for (const element of elements) {
+          tab.originalParent.appendChild(element);
+        }
+        tab.originalParent = null;
+      }
+    }
+    container.remove();
   }
 
-  if (!isWatchPage && enabled) {
-    document.body.classList.remove(CLASSES.enabled);
+  const resizeBar = document.querySelector(`.${CLASSES.resizeBar}`);
+  if (resizeBar) {
+    resizeBar.remove();
+  }
+
+  const primary = await findYouTubeElement(SELECTORS.primary);
+  const secondary = await findYouTubeElement(SELECTORS.secondary);
+  primary.style.flex = "";
+  secondary.style.flex = "";
+
+  window.dispatchEvent(new Event("resize"));
+
+  while (cleanups.length > 0) {
+    const cleanup = cleanups.shift();
+    if (cleanup instanceof Function) cleanup();
   }
 }
 
-window.addEventListener("yt-navigate-finish", () => changeLayout());
+async function changeLayout() {
+  const watchFlexy = await findYouTubeElement(SELECTORS.watchFlexy);
+  const isWatchPage = window.location.pathname === "/watch";
+  const enabled = document.body.classList.contains(CLASSES.enabled);
+  const isSingleColumn = watchFlexy.hasAttribute(ATTRIBUTES.isSingleColumn);
+  const theater = watchFlexy.hasAttribute(ATTRIBUTES.theater);
+  const fullscreen = watchFlexy.hasAttribute(ATTRIBUTES.fullscreen);
+
+  if (isWatchPage && !enabled && !isSingleColumn && !theater && !fullscreen) {
+    createTabUI();
+  }
+
+  if (!isWatchPage && enabled) {
+    restoreLayout();
+  }
+}
+
+async function init() {
+  window.addEventListener("yt-navigate-finish", changeLayout);
+
+  const watchFlexy = await findYouTubeElement(SELECTORS.watchFlexy);
+  const observer = new MutationObserver(async (mutations) => {
+    for (const mutation of mutations) {
+      if (watchFlexy.hasAttribute(mutation.attributeName)) {
+        restoreLayout();
+      } else {
+        changeLayout();
+      }
+    }
+  });
+  observer.observe(watchFlexy, {
+    attributes: true,
+    attributeFilter: [
+      ATTRIBUTES.isSingleColumn,
+      ATTRIBUTES.theater,
+      ATTRIBUTES.fullscreen,
+    ],
+  });
+}
+
+init();
