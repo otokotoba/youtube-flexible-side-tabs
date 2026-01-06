@@ -83,3 +83,18 @@ body.yt-fst-enabled ytd-watch-flexy #columns #secondary {
 .yt-fst-tab-content.yt-fst-active-tab {
   display: block;
 }
+
+.yt-fst-resize-bar {
+  width: 8px;
+  margin-top: 12px;
+  cursor: col-resize;
+  background-color: transparent;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.yt-fst-resize-bar:hover,
+.yt-fst-resize-bar.yt-fst-resizing {
+  background-color: var(--yt-spec-call-to-action);
+}

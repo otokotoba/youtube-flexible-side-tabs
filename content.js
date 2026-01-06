@@ -1,8 +1,9 @@
 "use strict";
 
 const SELECTORS = (() => {
-  const primary = "ytd-watch-flexy #columns #primary",
-    secondary = "ytd-watch-flexy #columns #secondary",
+  const columns = "ytd-watch-flexy #columns",
+    primary = `${columns} #primary`,
+    secondary = `${columns} #secondary`,
     description = `${primary} #description-inner`,
     descriptionExpander = `${description} #description-inline-expander`,
     descriptionExpanded = `${description} #expanded`,
@@ -11,6 +12,7 @@ const SELECTORS = (() => {
     related = `${secondary} #related`;
 
   return {
+    columns,
     primary,
     secondary,
     description,
@@ -30,6 +32,8 @@ const CLASSES = {
   tabButton: "yt-fst-tab-button",
   tabBody: "yt-fst-tab-body",
   tabContent: "yt-fst-tab-content",
+  resizeBar: "yt-fst-resize-bar",
+  resizing: "yt-fst-resizing",
 };
 
 const TABS = [
@@ -75,6 +79,10 @@ function findYouTubeElement(selector) {
 }
 
 async function createTabUI() {
+  if (document.querySelector(`.${CLASSES.tabContainer}`)) return;
+
+  await createResizeBar();
+
   const container = document.createElement("div");
   container.className = CLASSES.tabContainer;
 
@@ -172,6 +180,65 @@ function switchTab(contentId) {
   if (tabBody) {
     tabBody.scrollTo(0, 0);
   }
+}
+
+async function createResizeBar() {
+  if (document.querySelector(`.${CLASSES.resizeBar}`)) return;
+
+  const columns = await findYouTubeElement(SELECTORS.columns);
+  const primary = await findYouTubeElement(SELECTORS.primary);
+  const secondary = await findYouTubeElement(SELECTORS.secondary);
+
+  const resizeBar = document.createElement("div");
+  resizeBar.className = CLASSES.resizeBar;
+  columns.insertBefore(resizeBar, secondary);
+
+  const resizeColumns = (primaryRatio) => {
+    primaryRatio = Math.max(Math.min(primaryRatio, 90), 30);
+
+    primary.style.flex = `${primaryRatio}%`;
+    secondary.style.flex = `${100 - primaryRatio}%`;
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  chrome.storage.local.get(["primaryRatio"], (result) => {
+    if (result.primaryRatio) {
+      resizeColumns(result.primaryRatio);
+    }
+  });
+
+  resizeBar.addEventListener("mousedown", (e) => {
+    resizeBar.classList.add(CLASSES.resizing);
+    e.preventDefault();
+  });
+
+  let isAnimationDone = true;
+  let primaryRatio = null;
+
+  document.addEventListener("mousemove", (e) => {
+    if (!resizeBar.classList.contains(CLASSES.resizing) || !isAnimationDone)
+      return;
+
+    isAnimationDone = false;
+    requestAnimationFrame(() => {
+      const containerRect = columns.getBoundingClientRect();
+      primaryRatio =
+        ((e.clientX - containerRect.left) / containerRect.width) * 100;
+      resizeColumns(primaryRatio);
+      isAnimationDone = true;
+    });
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!resizeBar.classList.contains(CLASSES.resizing)) return;
+
+    resizeBar.classList.remove(CLASSES.resizing);
+
+    if (primaryRatio === null) return;
+
+    chrome.storage.local.set({ primaryRatio });
+    primaryRatio = null;
+  });
 }
 
 async function changeLayout() {
