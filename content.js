@@ -102,8 +102,6 @@ async function createTabUI() {
 
   document.body.classList.add(CLASSES.enabled);
 
-  await createResizeBar();
-
   const container = document.createElement("div");
   container.className = CLASSES.tabContainer;
 
@@ -140,7 +138,9 @@ async function createTabUI() {
 
   const secondary = await findYouTubeElement(SELECTORS.secondary);
   secondary.appendChild(container);
+
   await moveYouTubeElements();
+  await createResizeBar();
 }
 
 async function expandDescription() {
@@ -225,7 +225,22 @@ async function createResizeBar() {
 
   chrome.storage.local.get(["primaryRatio"], (result) => {
     if (result.primaryRatio) {
-      resizeColumns(result.primaryRatio);
+      const containerRect = columns.getBoundingClientRect();
+      const secondaryRect = secondary.getBoundingClientRect();
+
+      secondary.style.flexBasis = `${
+        (secondaryRect.width / containerRect.width) * 100
+      }%`;
+      secondary.style.transition = "flex-basis 0.4s ease-in-out";
+
+      requestAnimationFrame(() => {
+        resizeColumns(result.primaryRatio);
+        secondary.addEventListener("transitionend", function listener() {
+          secondary.style.transition = "";
+          window.dispatchEvent(new Event("resize"));
+          secondary.removeEventListener("transitionend", listener);
+        });
+      });
     }
   });
 
