@@ -5,12 +5,12 @@ const SELECTORS = (() => {
     columns = `${watchFlexy} #columns`,
     primary = `${columns} #primary`,
     secondary = `${columns} #secondary`,
-    description = `${primary} #description-inner`,
+    description = `${columns} #description-inner`,
     descriptionExpander = `${description} #description-inline-expander`,
     descriptionExpanded = `${description} #expanded`,
     descriptionExpandButton = `${description} #expand`,
-    comments = `${primary} #comments`,
-    related = `${secondary} #related`;
+    comments = `${columns} #comments`,
+    related = `${columns} #related`;
 
   return {
     watchFlexy,

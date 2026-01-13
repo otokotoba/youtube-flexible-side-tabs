@@ -1,0 +1,12 @@
+{
+  "name": "youtube-flexible-side-tabs",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "npx playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.0.5"
+  }
+}
