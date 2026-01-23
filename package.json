@@ -3,10 +3,12 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "test": "npx playwright test --ui"
+    "test": "npx playwright test --ui",
+    "pack": "node pack.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
-    "@types/node": "^25.0.5"
+    "@types/node": "^25.0.5",
+    "web-ext": "^9.2.0"
   }
 }
