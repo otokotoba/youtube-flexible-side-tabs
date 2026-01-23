@@ -74,6 +74,8 @@ test.beforeEach(async ({ page }) => {
   const href = await links.nth(random).getAttribute("href");
 
   await page.goto(href!);
+  await page.locator(SELECTORS.watchFlexy).waitFor();
+  await page.keyboard.press("M");
   await page.locator(`.${CLASSES.tabContainer}`).waitFor();
 });
 
